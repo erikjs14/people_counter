@@ -1,0 +1,68 @@
+.container {
+    min-height: 100vh;
+}
+
+.configContainer {
+    min-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.configContainer .form {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.configContainer .form .check {
+    flex-basis: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.resultsContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-bottom: 10rem;
+}
+
+.resultsContainer video {
+    margin: 3rem 0;
+}
+
+.resultsContainer .resultsTable {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    background-color: rgba(17, 106, 184, 0.1);
+    padding: 1rem;
+    border-radius: 1rem;
+}
+
+.resultsContainer .scrollText {
+    display: block;
+    margin-top: 1rem;
+}
+
+.resultsContainer .resultsTable .row {
+    /* padding: .3rem 0; */
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.resultsContainer .resultsTable .row:not(:last-child) {
+    border-bottom: 1px solid rgba(17, 106, 184, 0.3);
+}
+.resultsContainer .resultsTable .row .item{
+    font-size: 1.2em;
+    line-height: 2em;
+}
+
+.resultsContainer .resultsTable .row .item:first-child {
+    font-weight: 600;
+}
