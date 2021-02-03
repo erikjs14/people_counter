@@ -14,13 +14,19 @@ export default function Home() {
     const [progress, setProgress] = useState(null); // set when script runs and updates are received
     const [results, setResults] = useState(null); // set when results received
     const [processedVideoPath, setProcessedVideoPath] = useState(''); // set when script finished
+    const [pusher, setPusher] = useState(null);
 
-    const pusher = useMemo(() => new Pusher(
-        process.env.NEXT_PUBLIC_PUSHER_APP_KEY, {
-            cluster: process.env.NEXT_PUBLIC_PUSHER_APP_CLUSTER,
-            useTLS: true,
-        }
-    ), []);
+    useEffect(() => {
+        setPusher(
+            new Pusher(
+                process.env.NEXT_PUBLIC_PUSHER_APP_KEY, {
+                    cluster: process.env.NEXT_PUBLIC_PUSHER_APP_CLUSTER,
+                    useTLS: true,
+                }
+            )
+        );
+    }, []);
+
     const [progressChannel, setProgressChannel] = useState(null);
     useEffect(() => {
         if (progressChannel) {
@@ -71,7 +77,7 @@ export default function Home() {
         })
             .then(res => {
                 console.log(res);
-                setProgressChannel(pusher.subscribe(res.data.clientId));
+                if (pusher) setProgressChannel(pusher.subscribe(res.data.clientId));
                 setProgress(0);
                 setLoading(false);
             })
