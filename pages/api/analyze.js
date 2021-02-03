@@ -40,12 +40,14 @@ export default async function handler(req, res) {
                 return;
             }
             const withVideo = req.body?.withVideo === 'true';
+            const args = JSON.parse(req.body?.args).map(a => `${a.name} ${a.value}`);
             console.log('Starting script..');
             // generating unique id for communicating update to client
             const clientId = uuid();
             const outputFilename = `output-${clientId}.mp4`;
+            console.log(args)
             const pyprocess = new PythonShell(process.env.ROOT + '/model/analyze.py', {
-                args: withVideo ? ['-i '+filename, '-o '+outputFilename] : ['-i '+filename]
+                args: withVideo ? [ ...args, '-i '+filename, '-o '+outputFilename, ] : [ ...args, '-i '+filename]
             });
             pyprocess.on('message', msg => {
                 console.log(msg);

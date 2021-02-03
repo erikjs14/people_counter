@@ -17,10 +17,15 @@
     align-items: center;
 }
 
-.configContainer .form .check {
+.configContainer .form .ownRow {
     flex-basis: 100%;
     display: flex;
     justify-content: center;
+    align-items: center;
+}
+
+.configContainer .form .ownRow .check {
+    margin-left: 2rem;
 }
 
 .resultsContainer {

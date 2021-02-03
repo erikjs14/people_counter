@@ -20,11 +20,11 @@ from collections import OrderedDict
 ap = argparse.ArgumentParser()
 ap.add_argument('-i', '--input', type=str, required=True)
 ap.add_argument('-o', '--output', type=str)
-ap.add_argument('-pu', '--progress-update', type=int, default=3000)
-ap.add_argument('-con', '--confidence', type=float, default=0.4)
-ap.add_argument('-sf', '--skip-frames', type=int, default=30)
-ap.add_argument('-dim', '--dimension', type=int, default=500) # dimension to which to crop the video to
-ap.add_argument('-cd', '--count-direction', type=str, default='vertical') # whether to count in horizontal or vertical direction
+ap.add_argument('-p', '--progress-update', type=int, default=3000)
+ap.add_argument('-c', '--confidence', type=float, default=0.4)
+ap.add_argument('-s', '--skip-frames', type=int, default=30)
+ap.add_argument('-d', '--dimension', type=int, default=500) # dimension to which to crop the video to
+ap.add_argument('-a', '--count-direction', type=str, default='vertical') # whether to count in horizontal or vertical direction
 cargs = vars(ap.parse_args())
 
 # Arguments, can be implemeted as command line args outside this notebook
@@ -346,7 +346,7 @@ while True:
 
   # draw line at which counting happens
   if writer is not None: 
-    if args['count_direction'] == 'vertical':
+    if args['count_direction'].strip() == 'vertical':
       cv2.line(frame, (0, H//2), (W, H//2), (255, 166, 0), 2)
     else:
       cv2.line(frame, (W//2, 0), (W//2, H), (255, 166, 0), 2)
@@ -375,7 +375,7 @@ while True:
 
       # check whether already counted
       if not to.counted:
-        if args['count_direction'] == 'vertical':
+        if args['count_direction'].strip() == 'vertical':
           # count, if: direction is up AND centroid is above center line (and not counted before)
           if direction_y > 0 and centroid[1] > H//2:
             totalDown += 1
@@ -405,7 +405,7 @@ while True:
   if writer is not None:
     # drawing general info on screen
     info = None
-    if args['count_direction'] == 'vertical':
+    if args['count_direction'].strip() == 'vertical':
       info = [
         ('Counted', ct.nextObjectID),
         ('Up', totalUp),
@@ -459,7 +459,7 @@ results = [
     { 'label': 'Approx. FPS', 'value': fps.fps() },
     { 'label': 'Counted Up', 'value': totalUp },
     { 'label': 'Counted Down', 'value': totalDown },
-    { 'label': 'Total Counted', 'value': totalUp+totalDown },
+    { 'label': 'Total Counted', 'value': ct.nextObjectID },
 ];
 print('[RESULTS] ' + json.dumps(results));
 
