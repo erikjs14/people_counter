@@ -20,8 +20,22 @@ from collections import OrderedDict
 ap = argparse.ArgumentParser()
 ap.add_argument('-i', '--input', type=str, required=True)
 ap.add_argument('-o', '--output', type=str)
-ap.add_argument('-pu', '--progress-update', type=int, default=3000);
+ap.add_argument('-pu', '--progress-update', type=int, default=3000)
+ap.add_argument('-con', '--confidence', type=float, default=0.4)
+ap.add_argument('-sf', '--skip-frames', type=int, default=30)
+ap.add_argument('-dim', '--dimension', type=int, default=500) # dimension to which to crop the video to
+ap.add_argument('-cd', '--count-direction', type=str, default='vertical') # whether to count in horizontal or vertical direction
 cargs = vars(ap.parse_args())
+
+# Arguments, can be implemeted as command line args outside this notebook
+args = {
+  'prototxt': 'MobileNetSSD_deploy.prototxt', # path to Caffe deploy prototxt file
+  'model': 'MobileNetSSD_deploy.caffemodel', # path to pre-trained Caffe model
+#   'input': cargs['input'], # input video
+#   'output': cargs['output'], # output video
+  'object-to-track': 'person', # class name of the to-track object type
+}
+args = { **args, **cargs };
 
 # centroid tracking alg taken from: https://www.pyimagesearch.com/2018/07/23/simple-object-tracking-with-opencv/
 class CentroidTracker:
@@ -203,18 +217,6 @@ Perform object detection only once every _skip-frames_ frames, and run correlati
 Object Detection Model: MobileNet SSD
 """
 
-# Arguments, can be implemeted as command line args outside this notebook
-args = {
-  'prototxt': 'MobileNetSSD_deploy.prototxt', # path to Caffe deploy prototxt file
-  'model': 'MobileNetSSD_deploy.caffemodel', # path to pre-trained Caffe model
-#   'input': cargs['input'], # input video
-#   'output': cargs['output'], # output video
-  'confidence': 0.4, # threshold for probability of detection
-  'skip-frames': 30, # amount of frames skipped between detections
-  'object-to-track': 'person', # class name of the to-track object type
-}
-args = { **args, **cargs };
-
 # MobileNet classes
 CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
 	"bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
@@ -247,6 +249,9 @@ trackableObjects = {} # maps object ids to a trackableObject
 totalFrames = 0
 totalUp = 0
 totalDown = 0
+totalLeft = 0
+totalRight = 0
+totalCounted = 0
 
 fps = FPS().start()
 
@@ -262,7 +267,7 @@ while True:
 
   # reduce dimensions (for performance)
   # and convert from BGR to RGB
-  frame = imutils.resize(frame, width=500)
+  frame = imutils.resize(frame, width=args['dimension'])
   #rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
   # set frame dimensions (only once)
@@ -280,7 +285,7 @@ while True:
   rects = []
 
   # run object detection if at n-th frame
-  if totalFrames % args['skip-frames'] == 0:
+  if totalFrames % args['skip_frames'] == 0:
     status = 'detecting'
     trackers = []
 
@@ -340,7 +345,11 @@ while True:
       rects.append((startX, startY, endX, endY))
 
   # draw line at which counting happens
-  if writer is not None: cv2.line(frame, (0, H//2), (W, H//2), (0, 255, 255), 2)
+  if writer is not None: 
+    if args['count_direction'] == 'vertical':
+      cv2.line(frame, (0, H//2), (W, H//2), (255, 166, 0), 2)
+    else:
+      cv2.line(frame, (W//2, 0), (W//2, H), (255, 166, 0), 2)
   
   # utilize centroid tracker to associate objects and rect centroids
   objects = ct.update(rects)
@@ -357,21 +366,32 @@ while True:
     # else, use it to determine direction
     else: 
       # direction computed by difference of mean of old centroids and current centroid (y-coordinates)
-      # negative is up and positive is down
+      # negative is up/left and positive is down/right
+      x = [c[0] for c in to.centroids]
       y = [c[1] for c in to.centroids]
-      direction = centroid[1] - np.mean(y)
+      direction_x = centroid[0] - np.mean(x)
+      direction_y = centroid[1] - np.mean(y)
       to.centroids.append(centroid)
 
       # check whether already counted
       if not to.counted:
-        # count, if: direction is up AND centroid is above center line (and not counted before)
-        if direction > 0 and centroid[1] > H//2:
-          totalDown += 1
-          to.counted = True
-        # equivalent for other direction
-        if direction < 0 and centroid[1] < H//2:
-          totalUp += 1
-          to.counted = True
+        if args['count_direction'] == 'vertical':
+          # count, if: direction is up AND centroid is above center line (and not counted before)
+          if direction_y > 0 and centroid[1] > H//2:
+            totalDown += 1
+            to.counted = True
+          # equivalent for other direction
+          if direction_y < 0 and centroid[1] < H//2:
+            totalUp += 1
+            to.counted = True
+        else:
+          if direction_x > 0 and centroid[0] > W//2:
+            totalRight += 1
+            to.counted = True
+          # equivalent for other direction
+          if direction_x < 0 and centroid[0] < W//2:
+            totalLeft += 1
+            to.counted = True
 
     # store object
     trackableObjects[objectID] = to
@@ -382,17 +402,28 @@ while True:
       cv2.putText(frame, text, (centroid[0] -10, centroid[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
       cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
 
-      # drawing general info on screen
+  if writer is not None:
+    # drawing general info on screen
+    info = None
+    if args['count_direction'] == 'vertical':
       info = [
+        ('Counted', ct.nextObjectID),
         ('Up', totalUp),
         ('Down', totalDown),
         ('Status', status),
       ]
-      for (i, (k, v)) in enumerate(info):
-        text = f'{k}: {v}'
-        cv2.putText(frame, text, (10, H - ((i * 20) + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+    else:
+      info = [
+        ('Counted', ct.nextObjectID),
+        ('Left', totalLeft),
+        ('Right', totalRight),
+        ('Status', status)
+      ]
+    for (i, (k, v)) in enumerate(info):
+      text = f'{k}: {v}'
+      cv2.putText(frame, text, (10, H - ((i * 20) + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
 
-      writer.write(frame)
+    writer.write(frame)
 
   #cv2.imwrite('frame_{}.jpg'.format(str(totalFrames).zfill(5)), rgb)
 
