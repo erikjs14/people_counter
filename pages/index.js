@@ -26,6 +26,10 @@ export default function Home() {
       { name: '-b', label: 'Draw Bounding Boxes', value: 'false' },
       { name: '-f', label: 'Max Disappeared', value: '50' },
       { name: '-j', label: 'Max Distance', value: '50' },
+      { name: '-q', label: 'Analyze Face', value: 'false' },
+      { name: '-e', label: 'Enforce Detection', value: 'true' },
+      { name: '-n', label: 'Detection BB Padding', value: '0' },
+      { name: '-k', label: 'Analyze After', value: '10' },
     ]);
 
     useEffect(() => {

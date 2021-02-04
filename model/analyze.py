@@ -12,6 +12,7 @@ from os.path import dirname, join
 import os
 from sys import maxsize, platform
 from google.cloud import storage
+from deepface import DeepFace
 
 """## Helper"""
 
@@ -34,6 +35,10 @@ ap.add_argument('-m', '--min-frames', type=int, default=1) # minimum number of f
 ap.add_argument('-b', '--bounding-box', type=str, default='false') # whether to draw bounding box or centroid
 ap.add_argument('-f', '--max-disappeared', type=int, default=50) # amount of frames to wait before removing object from tracking
 ap.add_argument('-j', '--max-distance', type=int, default=50) # maximum distance between centroids to associate with same id
+ap.add_argument('-q', '--facial-attributes', type=str, default='false') # whether to analyze facial attributes
+ap.add_argument('-e', '--enforce-detection', type=str, default='true') # whether to analyse face only if face detected
+ap.add_argument('-k', '--analyze-after', type=int, default=0) # number of frames after detection before trying to evaluate facial attributes
+ap.add_argument('-n', '--padding', type=int, default=0) # number of pixels to pad the bounding boxes
 cargs = vars(ap.parse_args())
 
 # Arguments, can be implemeted as command line args outside this notebook
@@ -77,6 +82,7 @@ class CentroidTracker:
 		# been marked as "disappeared", respectively
 		self.nextObjectID = 0
 		self.objects = OrderedDict()
+		self.objBB = OrderedDict()
 		self.disappeared = OrderedDict()
 
 		# store the number of maximum consecutive frames a given
@@ -89,10 +95,11 @@ class CentroidTracker:
 		# distance we'll start to mark the object as "disappeared"
 		self.maxDistance = maxDistance
 
-	def register(self, centroid):
+	def register(self, centroid, bb):
 		# when registering an object we use the next available object
 		# ID to store the centroid
 		self.objects[self.nextObjectID] = centroid
+		self.objBB[self.nextObjectID] = bb
 		self.disappeared[self.nextObjectID] = 0
 		self.nextObjectID += 1
 
@@ -100,6 +107,7 @@ class CentroidTracker:
 		# to deregister an object ID we delete the object ID from
 		# both of our respective dictionaries
 		del self.objects[objectID]
+		del self.objBB[objectID]
 		del self.disappeared[objectID]
 
 	def update(self, rects):
@@ -123,6 +131,7 @@ class CentroidTracker:
 
 		# initialize an array of input centroids for the current frame
 		inputCentroids = np.zeros((len(rects), 2), dtype="int")
+		inputBBs = np.zeros((len(rects), 4), dtype='int')
 
 		# loop over the bounding box rectangles
 		for (i, (startX, startY, endX, endY)) in enumerate(rects):
@@ -130,12 +139,13 @@ class CentroidTracker:
 			cX = int((startX + endX) / 2.0)
 			cY = int((startY + endY) / 2.0)
 			inputCentroids[i] = (cX, cY)
+			inputBBs[i] = (startX, startY, endX, endY)
 
 		# if we are currently not tracking any objects take the input
 		# centroids and register each of them
 		if len(self.objects) == 0:
 			for i in range(0, len(inputCentroids)):
-				self.register(inputCentroids[i])
+				self.register(inputCentroids[i], inputBBs[i])
 
 		# otherwise, are are currently tracking objects so we need to
 		# try to match the input centroids to existing object
@@ -188,6 +198,7 @@ class CentroidTracker:
 				# counter
 				objectID = objectIDs[row]
 				self.objects[objectID] = inputCentroids[col]
+				self.objBB[objectID] = inputBBs[col]
 				self.disappeared[objectID] = 0
 
 				# indicate that we have examined each of the row and
@@ -223,7 +234,7 @@ class CentroidTracker:
 			# register each new input centroid as a trackable object
 			else:
 				for col in unusedCols:
-					self.register(inputCentroids[col])
+					self.register(inputCentroids[col], inputBBs[col])
 
 		# return the set of trackable objects
 		return self.objects
@@ -237,6 +248,10 @@ class TrackableObject:
     self.centroids = [centroid]
     # whether this object has already been counted
     self.counted = False
+    # whether img has been written
+    self.saved = False
+    self.gender = ''
+    self.age = ''
 
 """## Tracking Implementation
 
@@ -272,6 +287,8 @@ tmp_out_path = join(dirname(__file__), 'tmp_output', args['output'].strip()) if 
 if not os.path.exists(join(dirname(__file__), 'tmp_output')):
     os.makedirs(join(dirname(__file__), 'tmp_output'))
 
+tmp_out_path_people = join(dirname(__file__), 'tmp_output')
+
 # init video writer
 writer = None
 
@@ -289,6 +306,10 @@ totalDown = 0
 totalLeft = 0
 totalRight = 0
 totalCounted = 0
+totalMen = 0
+totalWomen = 0
+ageCum = 0
+ageCount = 0
 
 fps = FPS().start()
 
@@ -391,9 +412,39 @@ while True:
   # utilize centroid tracker to associate objects and rect centroids
   objects = ct.update(rects)
 
-  if writer is not None and args['bounding_box'].strip() == 'true':
-      for rect in rects:
-          cv2.rectangle(frame, (rect[0], rect[1]), (rect[2], rect[3]), (255, 0 , 0), 2 )
+  if writer is not None:
+      for key in ct.objBB.keys():
+        to = trackableObjects.get(key, None)
+        if args['facial_attributes'].strip() == 'true' and to is not None and not to.saved and len(to.centroids) >= args['analyze_after']:
+          rect = ct.objBB[key]
+          p = args['padding']
+          r0 = rect[0]-p if rect[0] >= p else 0
+          r1 = rect[1]-p if rect[1] >= p else 0
+          r2 = rect[2]+p if rect[2] < W-p else 0
+          r3 = rect[3]+p if rect[3] < H-p else 0
+          try:
+            roi = frame[r1-p:r3+p, r0-p:r2+p]
+            img_path = f'{tmp_out_path}.{key}.jpg'
+            cv2.imwrite(img_path, roi)
+          
+            ed = True if args['enforce_detection'].strip() == 'true' else False
+            analysis = DeepFace.analyze(img_path=img_path, actions=['age', 'gender'], enforce_detection=ed)
+            to.gender = analysis['gender']
+            to.age = str(analysis['age'])
+            if to.gender == 'Man': totalMen += 1
+            elif to.gender == 'Woman': totalWomen += 1
+            ageCum += int(to.age)
+            ageCount += 1
+          
+            os.remove(img_path)
+          except:
+            print('No face detected for ' + str(key))
+          
+
+          to.saved = True
+        if args['bounding_box'].strip() == 'true':
+          rect = ct.objBB[key]
+          cv2.rectangle(frame, (rect[0], rect[1]), (rect[2], rect[3]), (0, 0, 255), 2 )
   
   # loop over tracked objects for actual counting
   for (objectID, centroid) in objects.items():
@@ -441,8 +492,14 @@ while True:
     if writer is not None:
       text = f'ID {objectID}'
       if args['bounding_box'].strip() == 'false':
-        cv2.putText(frame, text, (centroid[0] -10, centroid[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
+        cv2.putText(frame, text, (centroid[0] -10, centroid[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 0, 255), -1)
+        pad = 20
+        if len(to.gender) > 0:
+          cv2.putText(frame, to.gender, (centroid[0]-20, centroid[1]+pad), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+          pad += 20
+        if len(to.age) > 0:       
+          cv2.putText(frame, to.age, (centroid[0]-20, centroid[1]+pad), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1) 
 
   if writer is not None:
     # drawing general info on screen
@@ -523,6 +580,9 @@ results = [
     { 'label': 'Min Frame Time', 'value': '{:.2f}s'.format(min) },
     { 'label': 'Max Frame Time', 'value': '{:.2f}s'.format(max) },
     { 'label': 'Avg Frame Time', 'value': '{:.2f}s'.format(avg) },
+    { 'label': 'Amount Men', 'value': totalMen },
+    { 'label': 'Amount Women', 'value': totalWomen },
+    { 'label': 'Average Age', 'value': round(ageCum/ageCount) if ageCount > 0 else '-' },
 ];
 print('[RESULTS] ' + json.dumps(results));
 
