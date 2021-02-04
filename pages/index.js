@@ -3,7 +3,7 @@ import axios from 'axios';
 import Head from 'next/head'
 import Pusher from 'pusher-js';
 import styles from '../styles/Home.module.css'
-import { FilePicker, Button, Pane, Text, Heading, Paragraph, Alert, Checkbox, Dialog, IconButton, CogIcon, TextInput  } from 'evergreen-ui';
+import { FilePicker, Button, Pane, Text, Heading, Paragraph, Alert, Checkbox, Dialog, IconButton, CogIcon, TextInput, extractStyles  } from 'evergreen-ui';
 import Fade from 'react-reveal/Fade';
 import ProgressBar from '@ramonak/react-progress-bar';
 
