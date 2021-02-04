@@ -21,6 +21,9 @@ export default function Home() {
       { name: '-s', label: 'Skip Frames', value: '30' },
       { name: '-d', label: 'Dimension', value: '500' },
       { name: '-a', label: 'Count Direction', value: 'vertical' },
+      { name: '-l', label: 'Counting Line Position', value: '0.5' },
+      { name: '-m', label: 'Minimum #Frames before Count', value: '0' },
+      { name: '-b', label: 'Draw Bounding Boxes', value: 'false' },
     ]);
 
     useEffect(() => {
@@ -211,6 +214,7 @@ export default function Home() {
                         <Pane flex='1'>{aconf.label}</Pane>
                         <Pane flex='1'>
                             <TextInput
+                                width='unset'
                                 value={aconf.value}
                                 onChange={e => setArgs(prev => prev.map(c => (
                                     c.name === aconf.name 

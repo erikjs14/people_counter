@@ -29,6 +29,9 @@ ap.add_argument('-c', '--confidence', type=float, default=0.4)
 ap.add_argument('-s', '--skip-frames', type=int, default=30)
 ap.add_argument('-d', '--dimension', type=int, default=500) # dimension to which to crop the video to
 ap.add_argument('-a', '--count-direction', type=str, default='vertical') # whether to count in horizontal or vertical direction
+ap.add_argument('-l', '--counting-line', type=float, default=0.5) # at what fraction of width/height to position the counting line
+ap.add_argument('-m', '--min-frames', type=int, default=1) # minimum number of frames after initial detection when to start evaluating direction
+ap.add_argument('-b', '--bounding-box', type=str, default='false') # whether to draw bounding box or centroid
 cargs = vars(ap.parse_args())
 
 # Arguments, can be implemeted as command line args outside this notebook
@@ -379,12 +382,16 @@ while True:
   # draw line at which counting happens
   if writer is not None: 
     if args['count_direction'].strip() == 'vertical':
-      cv2.line(frame, (0, H//2), (W, H//2), (255, 166, 0), 2)
+      cv2.line(frame, (0, int(H*args['counting_line'])), (W, int(H*args['counting_line'])), (255, 166, 0), 2)
     else:
-      cv2.line(frame, (W//2, 0), (W//2, H), (255, 166, 0), 2)
+      cv2.line(frame, (int(W*args['counting_line']), 0), (int(W*args['counting_line']), H), (255, 166, 0), 2)
   
   # utilize centroid tracker to associate objects and rect centroids
   objects = ct.update(rects)
+
+  if writer is not None and args['bounding_box'].strip() == 'true':
+      for rect in rects:
+          cv2.rectangle(frame, (rect[0], rect[1]), (rect[2], rect[3]), (255, 0 , 0), 2 )
   
   # loop over tracked objects for actual counting
   for (objectID, centroid) in objects.items():
@@ -399,29 +406,29 @@ while True:
     else: 
       # direction computed by difference of mean of old centroids and current centroid (y-coordinates)
       # negative is up/left and positive is down/right
-      x = [c[0] for c in to.centroids]
-      y = [c[1] for c in to.centroids]
-      direction_x = centroid[0] - np.mean(x)
-      direction_y = centroid[1] - np.mean(y)
       to.centroids.append(centroid)
 
-      # check whether already counted
-      if not to.counted:
+      # check whether already counted and enough frames tracked
+      if not to.counted and len(to.centroids) >= args['min_frames']:
         if args['count_direction'].strip() == 'vertical':
-          # count, if: direction is up AND centroid is above center line (and not counted before)
-          if direction_y > 0 and centroid[1] > H//2:
+          # count, if: direction is up AND centroid is above counting line (and not counted before)
+          y = [c[1] for c in to.centroids]
+          direction_y = centroid[1] - np.mean(y)
+          if direction_y > 0 and centroid[1] > int(H*args['counting_line']):
             totalDown += 1
             to.counted = True
           # equivalent for other direction
-          if direction_y < 0 and centroid[1] < H//2:
+          if direction_y < 0 and centroid[1] < int(H*args['counting_line']):
             totalUp += 1
             to.counted = True
         else:
-          if direction_x > 0 and centroid[0] > W//2:
+          x = [c[0] for c in to.centroids]
+          direction_x = centroid[0] - np.mean(x)
+          if direction_x > 0 and centroid[0] > int(W*args['counting_line']):
             totalRight += 1
             to.counted = True
           # equivalent for other direction
-          if direction_x < 0 and centroid[0] < W//2:
+          if direction_x < 0 and centroid[0] < int(W*args['counting_line']):
             totalLeft += 1
             to.counted = True
 
@@ -431,8 +438,9 @@ while True:
     # drawing object info on screen (id and position)
     if writer is not None:
       text = f'ID {objectID}'
-      cv2.putText(frame, text, (centroid[0] -10, centroid[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-      cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
+      if args['bounding_box'].strip() == 'false':
+        cv2.putText(frame, text, (centroid[0] -10, centroid[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
 
   if writer is not None:
     # drawing general info on screen
