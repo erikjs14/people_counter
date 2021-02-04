@@ -24,6 +24,8 @@ export default function Home() {
       { name: '-l', label: 'Counting Line Position', value: '0.5' },
       { name: '-m', label: 'Minimum #Frames before Count', value: '0' },
       { name: '-b', label: 'Draw Bounding Boxes', value: 'false' },
+      { name: '-f', label: 'Max Disappeared', value: '50' },
+      { name: '-j', label: 'Max Distance', value: '50' },
     ]);
 
     useEffect(() => {

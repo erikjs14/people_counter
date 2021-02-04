@@ -32,6 +32,8 @@ ap.add_argument('-a', '--count-direction', type=str, default='vertical') # wheth
 ap.add_argument('-l', '--counting-line', type=float, default=0.5) # at what fraction of width/height to position the counting line
 ap.add_argument('-m', '--min-frames', type=int, default=1) # minimum number of frames after initial detection when to start evaluating direction
 ap.add_argument('-b', '--bounding-box', type=str, default='false') # whether to draw bounding box or centroid
+ap.add_argument('-f', '--max-disappeared', type=int, default=50) # amount of frames to wait before removing object from tracking
+ap.add_argument('-j', '--max-distance', type=int, default=50) # maximum distance between centroids to associate with same id
 cargs = vars(ap.parse_args())
 
 # Arguments, can be implemeted as command line args outside this notebook
@@ -68,7 +70,7 @@ def upload_blob(bucket_name, source_file_name, destination_blob_name):
 
 # centroid tracking alg taken from: https://www.pyimagesearch.com/2018/07/23/simple-object-tracking-with-opencv/
 class CentroidTracker:
-	def __init__(self, maxDisappeared=50, maxDistance=50):
+	def __init__(self, maxDisappeared=args['max_disappeared'], maxDistance=args['max_distance']):
 		# initialize the next unique object ID along with two ordered
 		# dictionaries used to keep track of mapping a given object
 		# ID to its centroid and number of consecutive frames it has
