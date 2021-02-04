@@ -489,14 +489,14 @@ time_in_frame = {}
 for to in list(trackableObjects.values()):
     time_in_frame[to.id] = len(to.centroids)
 # get min, max and average time in frame
-min = maxsize
+min = 0
 max = 0
 avg = 0
 for val in list(time_in_frame.values()):
-    min = val if val < min else min
+    min = val if val < min or min == 0 else min
     max = val if val > max else max
     avg += val
-avg /= len(time_in_frame)
+avg /= len(time_in_frame) if len(time_in_frame) > 0 else 1
 # from amount frames to seconds
 min /= originalFps
 max /= originalFps
@@ -506,9 +506,9 @@ avg /= originalFps
 # results as json
 results = [
     { 'label': 'Elapsed Time', 'value': '{:.2f}s'.format(fps.elapsed()) },
-    { 'label': 'Approx. FPS', 'value': '{:.2f}s'.format(fps.fps()) },
-    { 'label': 'Counted Up', 'value': totalUp },
-    { 'label': 'Counted Down', 'value': totalDown },
+    { 'label': 'Approx. FPS', 'value': '{:.2f}'.format(fps.fps()) },
+    { 'label': ('Counted Up' if args['count_direction'].strip() == 'vertical' else 'Counted Left'), 'value': (totalUp if args['count_direction'].strip() == 'vertical' else totalLeft) },
+    { 'label': ('Counted Down' if args['count_direction'].strip() == 'vertical' else 'Counted Right'), 'value': (totalDown if args['count_direction'].strip() == 'vertical' else totalRight) },
     { 'label': 'Total Counted', 'value': ct.nextObjectID },
     { 'label': 'Min Frame Time', 'value': '{:.2f}s'.format(min) },
     { 'label': 'Max Frame Time', 'value': '{:.2f}s'.format(max) },
