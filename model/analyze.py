@@ -41,7 +41,7 @@ args = {
 }
 args = { **args, **cargs };
 
-if platform == 'linux': os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = args['credentials_path']
+if platform == 'linux' and args['credentials_path'] is not None: os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = args['credentials_path'].strip()
 
 # https://cloud.google.com/storage/docs/uploading-objects#storage-upload-object-code-sample
 def upload_blob(bucket_name, source_file_name, destination_blob_name):
