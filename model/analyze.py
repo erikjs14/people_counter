@@ -10,7 +10,7 @@ from time import time
 from math import floor
 from os.path import dirname, join
 import os
-from sys import maxsize
+from sys import maxsize, platform
 from google.cloud import storage
 
 """## Helper"""
@@ -22,6 +22,7 @@ from collections import OrderedDict
 
 ap = argparse.ArgumentParser()
 ap.add_argument('-i', '--input', type=str, required=True)
+ap.add_argument('-g', '--credentials-path', type=str)
 ap.add_argument('-o', '--output', type=str)
 ap.add_argument('-p', '--progress-update', type=int, default=3000)
 ap.add_argument('-c', '--confidence', type=float, default=0.4)
@@ -39,6 +40,8 @@ args = {
   'object-to-track': 'person', # class name of the to-track object type
 }
 args = { **args, **cargs };
+
+if platform == 'linux': os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = args['credentials_path']
 
 # https://cloud.google.com/storage/docs/uploading-objects#storage-upload-object-code-sample
 def upload_blob(bucket_name, source_file_name, destination_blob_name):
@@ -259,6 +262,11 @@ amountFrames = int(video.get(cv2.CAP_PROP_FRAME_COUNT));
 originalFps = int(video.get(cv2.CAP_PROP_FPS))
 print('Loaded Video')
 
+# init output tmp file path
+tmp_out_path = join(dirname(__file__), 'tmp_output', args['output'].strip()) if args['output'] is not None else None
+if not os.path.exists(join(dirname(__file__), 'tmp_output')):
+    os.makedirs(join(dirname(__file__), 'tmp_output'))
+
 # init video writer
 writer = None
 
@@ -300,8 +308,8 @@ while True:
 
   # init writer
   if args['output'] is not None and writer is None:
-    fourcc = cv2.VideoWriter_fourcc(*'AV10')#(*'MJPG')#(*'VP90')#(*'H264')
-    writer = cv2.VideoWriter(f'model/tmp_output/{args["output"].strip()}', fourcc, 30, (W, H), True)
+    fourcc = cv2.VideoWriter_fourcc(*'VP90')#(*'AV10')#(*'MJPG')#(*'H264')
+    writer = cv2.VideoWriter(tmp_out_path, fourcc, 30, (W, H), True)
 
   # init current status
   status = 'waiting'
@@ -510,6 +518,6 @@ print('[RESULTS] ' + json.dumps(results));
 
 if writer is not None:
   writer.release()
-  upload_blob('pca-tmp-processed-video-storage', f'model/tmp_output/{args["output"].strip()}', f'processed/{args["output"].strip()}')
+  upload_blob('pca-tmp-processed-video-storage', tmp_out_path, f'processed/{args["output"].strip()}')
 video.release()
 cv2.destroyAllWindows()
