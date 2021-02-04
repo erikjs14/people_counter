@@ -1,5 +1,7 @@
 .container {
     min-height: 100vh;
+    padding: 0 1rem;
+    max-width: 100vw;
 }
 
 .configContainer {
@@ -35,8 +37,13 @@
     padding-bottom: 10rem;
 }
 
+.resultsContainer .barWrapper {
+    width: 30rem;
+}
+
 .resultsContainer video {
     margin: 3rem 0;
+    width: 50rem;
 }
 
 .resultsContainer .resultsTable {
@@ -72,4 +79,49 @@
 
 .resultsContainer .resultsTable .row .item:first-child {
     font-weight: 600;
+}
+
+@media (max-width: 700px) {
+ 
+    .configContainer {
+        min-height: 85vh;
+    }
+    
+    .configContainer .form {
+        flex-direction: column;
+        max-width: 100vw;
+    }
+
+    .configContainer .form div {
+        max-width: 90%;
+    }
+
+    .configContainer .form .submitBtn {
+        margin-top: 2rem;
+        order: 100;
+    }
+    
+    .configContainer .form .ownRow {
+        
+    }
+    
+    .configContainer .form .ownRow .check {
+        margin-left: 1rem;
+    }
+    
+    .resultsContainer .barWrapper {
+        width: 90vw;
+    }
+    
+    .resultsContainer video {
+        margin: 3rem 0;
+        width: 90vw;
+    }
+    
+    .resultsContainer .resultsTable {
+        margin-top: 3rem;
+        width: 90vw;
+        font-size: .8em;
+    }  
+
 }

@@ -110,7 +110,7 @@ export default function Home() {
                 <Pane className={styles.configContainer}>
                     <Heading is='h1' size={900} marginBottom={48}><strong>People Counter</strong></Heading>
 
-                    <Paragraph marginBottom={24}>Upload an .mp4 file to be analyzed.</Paragraph>
+                    <Paragraph marginBottom={24}>Upload a .mp4 file to be analyzed.</Paragraph>
 
                     <Pane  className={styles.form}>
                         {/* <input type='file' name='video' onChange={(e) => setFile(e.target.files[0])} /> */}
@@ -127,6 +127,7 @@ export default function Home() {
                             isLoading={loading} 
                             disabled={!file || (!error && progress !== null && !results)} 
                             onClick={onSubmit}
+                            className={styles.submitBtn}
                         >
                             Submit
                         </Button>
@@ -157,18 +158,20 @@ export default function Home() {
 
                     { !error && progress !== null && (
                         <Fade bottom>
-                            <ProgressBar 
-                                completed={progress} 
-                                bgcolor='#116AB8'
-                                width='30rem' 
-                            />
+                            <Pane className={styles.barWrapper}>
+                                <ProgressBar 
+                                    completed={progress} 
+                                    bgcolor='#116AB8'
+                                    width='100%' 
+                                />
+                            </Pane>
                         </Fade>
                     )}
                     
                     { !error && processedVideoPath && (
                         <Fade bottom>
                             <Text className={styles.scrollText}>Scroll to see results.</Text>
-                            <video src={processedVideoPath} width={700} controls />
+                            <video src={processedVideoPath} controls />
                         </Fade>
                     )}
 

@@ -45,8 +45,9 @@ export default async function handler(req, res) {
             // generating unique id for communicating update to client
             const clientId = uuid();
             const outputFilename = `output-${clientId}.mp4`;
+            const credentialsPath = process.env.ROOT + '/credentials.json';
             const pyprocess = new PythonShell(process.env.ROOT + '/model/analyze.py', {
-                args: withVideo ? [ ...args, '-i '+filename, '-o '+outputFilename, ] : [ ...args, '-i '+filename]
+                args: withVideo ? [ ...args, '-i '+filename, '-o '+outputFilename, '-g '+credentialsPath ] : [ ...args, '-i '+filename]
             });
             pyprocess.on('message', msg => {
                 console.log(msg);
