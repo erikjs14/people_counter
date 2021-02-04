@@ -9,7 +9,9 @@ import json
 from time import time
 from math import floor
 from os.path import dirname, join
+import os
 from sys import maxsize
+from google.cloud import storage
 
 """## Helper"""
 
@@ -37,6 +39,26 @@ args = {
   'object-to-track': 'person', # class name of the to-track object type
 }
 args = { **args, **cargs };
+
+# https://cloud.google.com/storage/docs/uploading-objects#storage-upload-object-code-sample
+def upload_blob(bucket_name, source_file_name, destination_blob_name):
+    """Uploads a file to the bucket."""
+    # bucket_name = "your-bucket-name"
+    # source_file_name = "local/path/to/file"
+    # destination_blob_name = "storage-object-name"
+
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+
+    blob.upload_from_filename(source_file_name)
+
+    print(
+        "File {} uploaded to {}.".format(
+            source_file_name, destination_blob_name
+        )
+    )
+
 
 # centroid tracking alg taken from: https://www.pyimagesearch.com/2018/07/23/simple-object-tracking-with-opencv/
 class CentroidTracker:
@@ -279,7 +301,7 @@ while True:
   # init writer
   if args['output'] is not None and writer is None:
     fourcc = cv2.VideoWriter_fourcc(*'AV10')#(*'MJPG')#(*'VP90')#(*'H264')
-    writer = cv2.VideoWriter(f'public/{args["output"].strip()}', fourcc, 30, (W, H), True)
+    writer = cv2.VideoWriter(f'model/tmp_output/{args["output"].strip()}', fourcc, 30, (W, H), True)
 
   # init current status
   status = 'waiting'
@@ -488,5 +510,6 @@ print('[RESULTS] ' + json.dumps(results));
 
 if writer is not None:
   writer.release()
+  upload_blob('pca-tmp-processed-video-storage', f'model/tmp_output/{args["output"].strip()}', f'processed/{args["output"].strip()}')
 video.release()
 cv2.destroyAllWindows()

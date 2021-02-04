@@ -45,7 +45,6 @@ export default async function handler(req, res) {
             // generating unique id for communicating update to client
             const clientId = uuid();
             const outputFilename = `output-${clientId}.mp4`;
-            console.log(args)
             const pyprocess = new PythonShell(process.env.ROOT + '/model/analyze.py', {
                 args: withVideo ? [ ...args, '-i '+filename, '-o '+outputFilename, ] : [ ...args, '-i '+filename]
             });
@@ -69,17 +68,17 @@ export default async function handler(req, res) {
                     console.log('The exit code was: ' + code);
                     console.log('The exit signal was: ' + signal);
                     console.log('Done');
-                    pusher.trigger(clientId, 'success', { msg: 'Finished.', videopath: withVideo ? outputFilename : undefined });
+                    pusher.trigger(clientId, 'success', { msg: 'Finished.', videopath: withVideo ? 'https://storage.googleapis.com/pca-tmp-processed-video-storage/processed/'+outputFilename : undefined });
                 }
 
                 // delete generated file after timeout
                 setTimeout(() => {
                     try {
-                        fs.unlinkSync(process.env.ROOT + '/public/'+outputFilename);
+                        fs.unlinkSync(process.env.ROOT + '/model/tmp_output/'+outputFilename);
                     } catch (err) {
                         console.log(err);
                     }
-                }, parseInt(process.env.DELETE_AFTER) * 60 * 1000); // after 5 min
+                }, parseInt(process.env.DELETE_AFTER) * 60 * 1000);
             });
             res.status(200).send({
                 status: 'analyzing..',
