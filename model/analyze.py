@@ -9,6 +9,7 @@ import json
 from time import time
 from math import floor
 from os.path import dirname, join
+from sys import maxsize
 
 """## Helper"""
 
@@ -233,6 +234,7 @@ print('Loaded Model')
 inputPath = join(dirname(__file__), args['input'].strip())
 video = cv2.VideoCapture(inputPath)
 amountFrames = int(video.get(cv2.CAP_PROP_FRAME_COUNT));
+originalFps = int(video.get(cv2.CAP_PROP_FPS))
 print('Loaded Video')
 
 # init video writer
@@ -450,16 +452,37 @@ while True:
 fps.stop()
 print('[INFO] elapsed time: {:.2f}'.format(fps.elapsed()))
 if fps.elapsed() > 0: print('[INFO] approx. FPS: {:.2f}'.format(fps.fps()))
-print(f'[RESULT] total up: {totalUp}')
-print(f'[RESULT] total down: {totalDown}')
+
+# get amount of frames each object was in frame
+# by counting the number of centroids in history
+time_in_frame = {}
+for to in list(trackableObjects.values()):
+    time_in_frame[to.id] = len(to.centroids)
+# get min, max and average time in frame
+min = maxsize
+max = 0
+avg = 0
+for val in list(time_in_frame.values()):
+    min = val if val < min else min
+    max = val if val > max else max
+    avg += val
+avg /= len(time_in_frame)
+# from amount frames to seconds
+min /= originalFps
+max /= originalFps
+avg /= originalFps
+
 
 # results as json
 results = [
-    { 'label': 'Elapsed Time', 'value': fps.elapsed() },
-    { 'label': 'Approx. FPS', 'value': fps.fps() },
+    { 'label': 'Elapsed Time', 'value': '{:.2f}s'.format(fps.elapsed()) },
+    { 'label': 'Approx. FPS', 'value': '{:.2f}s'.format(fps.fps()) },
     { 'label': 'Counted Up', 'value': totalUp },
     { 'label': 'Counted Down', 'value': totalDown },
     { 'label': 'Total Counted', 'value': ct.nextObjectID },
+    { 'label': 'Min Frame Time', 'value': '{:.2f}s'.format(min) },
+    { 'label': 'Max Frame Time', 'value': '{:.2f}s'.format(max) },
+    { 'label': 'Avg Frame Time', 'value': '{:.2f}s'.format(avg) },
 ];
 print('[RESULTS] ' + json.dumps(results));
 
