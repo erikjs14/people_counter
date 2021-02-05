@@ -420,8 +420,8 @@ while True:
           p = args['padding']
           r0 = rect[0]-p if rect[0] >= p else 0
           r1 = rect[1]-p if rect[1] >= p else 0
-          r2 = rect[2]+p if rect[2] < W-p else 0
-          r3 = rect[3]+p if rect[3] < H-p else 0
+          r2 = rect[2]+p if rect[2] < W-p else W
+          r3 = rect[3]+p if rect[3] < H-p else H
           try:
             roi = frame[r1-p:r3+p, r0-p:r2+p]
             img_path = f'{tmp_out_path}.{key}.jpg'
